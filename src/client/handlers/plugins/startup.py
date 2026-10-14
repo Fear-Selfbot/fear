@@ -1,9 +1,6 @@
 import logging
 
-from dispyro import Router
 from pyrogram import Client
-
-router = Router()
 
 log = logging.getLogger(__name__)
 
