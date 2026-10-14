@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -72,14 +71,18 @@ class Settings(BaseSettings):
 
     DATA_DIR: Path = Path(__file__).parent / ".data"
     SESSIONS_DIR: Path = DATA_DIR / "sessions"
+    HANDLERS_DIR: Path = Path(__file__).parent / "src" / "client" / "handlers"
 
     # Load PROXY_* only when Settings is created, not when this module is imported.
     proxy: PROXYSettings = Field(default_factory=PROXYSettings)
 
 
 config = Settings()
-if not config.DATA_DIR.exists():
-    os.mkdir(config.DATA_DIR)
 
-if not config.SESSIONS_DIR.exists():
-    os.mkdir(config.SESSIONS_DIR)
+config.SESSIONS_DIR.mkdir(exist_ok=True, parents=True)
+
+# if not config.DATA_DIR.exists():
+#     os.mkdir(config.DATA_DIR)
+
+# if not config.SESSIONS_DIR.exists():
+#     os.mkdir(config.SESSIONS_DIR)

@@ -12,10 +12,19 @@ wheels = [
 ]
 
 [[package]]
+name = "dispyro"
+version = "1.1.4"
+source = { git = "https://github.com/asteroid-den/dispyro#66e536849fe340bd06fbe05c06a8f061f1682469" }
+dependencies = [
+    { name = "kurigram" },
+]
+
+[[package]]
 name = "fearclient"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "dispyro" },
     { name = "kurigram" },
     { name = "kurigram-utils" },
     { name = "pydantic-settings" },
@@ -24,6 +33,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "dispyro", git = "https://github.com/asteroid-den/dispyro" },
     { name = "kurigram", specifier = ">=2.2.26" },
     { name = "kurigram-utils", git = "https://github.com/Keva1z/kurigram-utils" },
     { name = "pydantic-settings", specifier = ">=2.15.0" },

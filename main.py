@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from kurigram_utils import install_event_loop
@@ -5,6 +6,7 @@ from pyrogram import Client
 from pyrogram.enums import ClientPlatform
 
 from config import config
+from src.client.main import FearCore
 
 # Install custom asyncio event loop
 install_event_loop()
@@ -39,6 +41,11 @@ async def on_stop(client: Client):
     log.info("Bot stopped!")
 
 
+async def main():
+    fearCore = FearCore()
+    await fearCore.start()
+
+
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
@@ -46,4 +53,6 @@ if __name__ == "__main__":
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    app.run()
+    # app.run()
+
+    asyncio.run(main())

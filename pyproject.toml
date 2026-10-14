@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "dispyro",
     "kurigram>=2.2.26",
     "kurigram-utils",
     "pydantic-settings>=2.15.0",
@@ -13,3 +14,4 @@ dependencies = [
 
 [tool.uv.sources]
 kurigram-utils = { git = "https://github.com/Keva1z/kurigram-utils" }
+dispyro = { git = "https://github.com/asteroid-den/dispyro" }
