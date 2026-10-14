@@ -23,4 +23,5 @@ if __name__ == "__main__":
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    asyncio.run(main())
+    loop = asyncio.new_event_loop()
+    loop.run_until_complete(main())

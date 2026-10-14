@@ -30,3 +30,8 @@ async def handler(client: Client, message: types.Message):
 @router.message(filters.command("test", prefixes="/") & clientBot)
 async def handler2(client: Client, message: types.Message):
     await message.answer("Im a bot")
+
+
+@router.message(filters.command("test2", prefixes=".") & clientBot)
+async def handlertest2(client: Client, message: types.Message):
+    await message.answer("Im a bot")

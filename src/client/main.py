@@ -169,10 +169,16 @@ class FearBot(Client):
         bot_token: str | None = None,
         api_id: int | None = None,
         api_hash: str | None = None,
+        plugins: dict | None = None,
         **kwargs,
     ):
         super().__init__(
-            name=name, api_id=api_id, api_hash=api_hash, bot_token=bot_token, **kwargs
+            name=name,
+            api_id=api_id,
+            api_hash=api_hash,
+            bot_token=bot_token,
+            plugins=plugins,
+            **kwargs,
         )
 
 
@@ -205,6 +211,7 @@ class FearCore:
             api_id=config.API_ID,
             api_hash=config.API_HASH,
             bot_token=token,
+            plugins=None,
             **bot_kwargs,
         )
 
@@ -232,15 +239,18 @@ class FearCore:
                 **client_kwargs,
             )
 
-            await client.start()
-            await client.setup_bot()
-            await client.stop()
+            # await client.start()
+            # await client.setup_bot()
+            # await client.stop()
+
+            plugins_bot = dict(root="src/bot/plugins")  # noqa: C408
 
             bot = FearBot(
                 f"{name}_bot",
                 api_id=None,
                 api_hash=None,
                 bot_token=None,
+                plugins=plugins_bot,
                 **bot_kwargs,
             )
 
@@ -257,7 +267,9 @@ class FearCore:
             files.append(await self.__create_first_session())
 
         clients = await self.__create_clients(files)
-        dp = Dispatcher(*clients, disable_fsm=True)
+        dp = Dispatcher(
+            *clients, disable_fsm=True, clear_on_prepare=False, ignore_preparation=False
+        )
 
         dp.add_routers(*get_routers())
 
