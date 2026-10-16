@@ -1,31 +1,27 @@
-import asyncio
-from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from pyrogram import Client as PyroClient
-from pyrogram.types import Message
+
+from src.client.core.mixins.user import UserMethods
+
+if TYPE_CHECKING:
+    from .client import FearClient
 
 
-@dataclass
-class WaitMessage:
-    event: asyncio.Event
-    message: Message | None = None
-    is_waiting: bool = False
-    fromChat: str | int | None = None
-    waitFrom: str | int | None = None
-
-
-class FearUser(PyroClient):
+class FearUser(UserMethods, PyroClient):
     """Userbot instance of fear client"""
 
     def __init__(
         self,
         name: str,
+        client: FearClient,
         api_id: int | None = None,
         api_hash: str | None = None,
         phone_number: str | None = None,
         password: str | None = None,
         **kwargs,
     ):
+        self.client = client
         super().__init__(
             name,
             api_id,
@@ -43,13 +39,18 @@ class FearBot(PyroClient):
         self,
         name: str,
         bot_token: str,
+        owner_id: int,
+        client: FearClient,
         api_id: int | None = None,
         api_hash: str | None = None,
         **kwargs,
     ):
+        self.client = client
+        self.owner_id = owner_id
         super().__init__(
             name,
             api_id,
             api_hash,
+            bot_token=bot_token,
             **kwargs,
         )
