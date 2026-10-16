@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import BinaryIO
 
 from pyrogram import Client, types
+from pyrogram.errors import FloodWait
 from pyrogram.types import InputChatPhotoStatic, Message
 
 BOTFATHER = "BotFather"
@@ -125,10 +126,13 @@ class UserMethods(Client):
         if not self.is_connected or not bot.is_connected:
             return
 
-        await self.__set_bot_photo(bot)
-        await self.__set_name(bot)
-        await self.__set_description(bot)
-        await self.__set_about(bot)
+        try:
+            await self.__set_bot_photo(bot)
+            await self.__set_name(bot)
+            await self.__set_description(bot)
+            await self.__set_about(bot)
+        except FloodWait:
+            pass
 
     async def __set_bot_photo(self, bot: Client):
         if not self.me or not bot.me:

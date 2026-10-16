@@ -10,6 +10,8 @@ from config import config
 # Install custom asyncio event loop
 install_event_loop()
 
+from pyrogram import compose
+
 from src.client.core.client import FearClient
 
 log = logging.getLogger(__name__)
@@ -26,7 +28,7 @@ async def main():
 
     await client.setup()
 
-    # await compose(client.clients)
+    await compose(client.clients)
 
 
 if __name__ == "__main__":
