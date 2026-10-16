@@ -1,8 +1,9 @@
 import asyncio
 from dataclasses import dataclass
+from typing import BinaryIO
 
 from pyrogram import Client, types
-from pyrogram.types import Message
+from pyrogram.types import InputChatPhotoStatic, Message
 
 BOTFATHER = "BotFather"
 
@@ -119,3 +120,54 @@ class UserMethods(Client):
         else:
             async with self:
                 return await self.__get_token()
+
+    async def setup_bot_settings(self, bot: Client):
+        if not self.is_connected or not bot.is_connected:
+            return
+
+        await self.__set_bot_photo(bot)
+        await self.__set_name(bot)
+        await self.__set_description(bot)
+        await self.__set_about(bot)
+
+    async def __set_bot_photo(self, bot: Client):
+        if not self.me or not bot.me:
+            return
+
+        if not self.me.photo:
+            return
+
+        my_photo = await self.download_media(self.me.photo, in_memory=True)
+        if isinstance(my_photo, BinaryIO):
+            await bot.set_profile_photo(InputChatPhotoStatic(my_photo))
+
+    async def __set_name(self, bot: Client):
+        if not self.me or not bot.me:
+            return
+
+        if not self.me.username:
+            return
+
+        await bot.set_bot_name(f"FearClient ({self.me.username})")
+
+    async def __set_description(self, bot: Client):
+        if not self.me or not bot.me:
+            return
+
+        if not self.me.username:
+            return
+
+        description = """This is bot controlled by "Fear" selfbot"""
+
+        await bot.set_bot_info_description(description)
+
+    async def __set_about(self, bot: Client):
+        if not self.me or not bot.me:
+            return
+
+        if not self.me.username:
+            return
+
+        description = """This is bot controlled by "Fear" selfbot"""
+
+        await bot.set_bot_info_short_description(description)

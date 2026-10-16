@@ -2,7 +2,8 @@ import asyncio
 import logging
 
 from kurigram_utils import install_event_loop
-from pyrogram import compose
+
+from config import config
 
 # from src.client.main import FearCore
 
@@ -16,16 +17,16 @@ log = logging.getLogger(__name__)
 
 async def main():
     client = FearClient(
-        name="...",
-        api_id=123,
-        api_hash="...",
-        phone_number="...",
-        password="...",
+        name=config.NAME,
+        api_id=config.API_ID,
+        api_hash=config.API_HASH,
+        phone_number=config.PHONE,
+        password=config.PASSWORD,
     )
 
     await client.setup()
 
-    await compose(client.clients)
+    # await compose(client.clients)
 
 
 if __name__ == "__main__":

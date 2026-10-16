@@ -53,3 +53,6 @@ class FearClient:
         self.__create_user()
         self.bot_token = await self._user.get_bot_token()
         self.__create_bot()
+
+        async with self._user, self._bot:
+            await self._user.setup_bot_settings(self._bot)
