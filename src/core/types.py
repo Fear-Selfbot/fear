@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 
 from pyrogram import Client as PyroClient
 
-from src.client.core.mixins.user import UserMethods
+from src.core.mixins.user import UserMethods
 
 if TYPE_CHECKING:
     from .client import FearClient

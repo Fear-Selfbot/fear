@@ -2,7 +2,7 @@ from typing import cast
 
 from pyrogram import Client
 
-from src.client.core.types import FearBot
+from src.core.types import FearBot
 
 
 @Client.on_start()

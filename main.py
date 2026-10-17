@@ -12,7 +12,7 @@ install_event_loop()
 
 from pyrogram import compose
 
-from src.client.core.client import FearClient
+from src.core.client import FearClient
 
 log = logging.getLogger(__name__)
 

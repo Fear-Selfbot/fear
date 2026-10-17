@@ -3,7 +3,7 @@ from typing import cast
 from pyrogram import Client, filters, types
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from src.client.core.types import FearBot
+from src.core.types import FearBot
 
 kb = InlineKeyboardMarkup(
     inline_keyboard=[[InlineKeyboardButton("Тест", callback_data="test")]]

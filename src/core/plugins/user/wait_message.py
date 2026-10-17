@@ -2,8 +2,8 @@ from typing import cast
 
 from pyrogram import Client, types
 
-from src.client.core.mixins.user import WaitMessage
-from src.client.core.types import FearUser
+from src.core.mixins.user import WaitMessage
+from src.core.types import FearUser
 
 
 def isFromChat(wait: WaitMessage, message: types.Message) -> bool:
