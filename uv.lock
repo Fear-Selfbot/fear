@@ -22,7 +22,7 @@ dependencies = [
 [[package]]
 name = "fear-module"
 version = "0.1.0"
-source = { git = "https://github.com/Fear-Selfbot/fear-module#5882c51bea278df47b7a70d90258f140ad4e65d6" }
+source = { git = "https://github.com/Fear-Selfbot/fear-module#1ae3972adb9a8472e59ef79e35a2e7704d158447" }
 dependencies = [
     { name = "kurigram" },
 ]

@@ -14,9 +14,7 @@ from pyrogram.types import Message
 
 helpUserCommand = Command("help", ".", "Returns all commands", ClientType.USER)
 helpBotCommand = Command("help", "/", "Returns all commands", ClientType.BOT)
-reloadCommand = Command(
-    "reload", ".", "Reload all modules", [ClientType.BOT, ClientType.USER]
-)
+reloadCommand = Command("reload", ".", "Reload all modules", ClientType.USER)
 
 
 class FearClientExtended(FearClient):
@@ -57,7 +55,14 @@ async def help_handler(client: Client, message: types.Message):
     commands = ""
 
     for module in client.client.modules:
-        commands += module.get_commands(ClientType.USER) + "\n\n"
+        commands += module.get_commands(ClientType.USER) + "\n"
+        if (
+            message.chat and message.chat.type and message.chat.type.name == "PRIVATE"
+        ) and (message.from_user and message.from_user.id != message.chat.id):
+            commands += module.get_commands(ClientType.SECRETARY).replace(
+                f"{module.header}\n", ""
+            )
+        commands += "\n"
 
     await message.edit(commands)
 

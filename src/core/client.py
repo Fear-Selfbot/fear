@@ -1,6 +1,6 @@
 import asyncio
 
-from fear_module import FearModule
+from fear_module import ClientType, FearModule
 from pyrogram import Client
 from pyrogram.types import Message
 
@@ -67,6 +67,8 @@ class FearClient:
             for handler in module.user_handlers:
                 self._user.add_handler(handler)
             for handler in module.bot_handlers:
+                self._bot.add_handler(handler)
+            for handler in module.get_handlers(ClientType.SECRETARY):
                 self._bot.add_handler(handler)
 
         print(f"Loaded {len(self._loaded_modules)} modules")
