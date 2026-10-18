@@ -11,3 +11,6 @@ wheels/
 .env
 .data
 .test
+
+/src/modules/*
+!/src/modules/system/

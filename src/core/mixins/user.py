@@ -152,7 +152,9 @@ class UserMethods(Client):
         if not self.me.username:
             return
 
-        await bot.set_bot_name(f"FearClient ({self.me.username})")
+        name = f"FearClient ({self.me.username})"
+        if bot.me.full_name != name:
+            await bot.set_bot_name(name)
 
     async def __set_description(self, bot: Client):
         if not self.me or not bot.me:
@@ -163,7 +165,8 @@ class UserMethods(Client):
 
         description = """This is bot controlled by "Fear" selfbot"""
 
-        await bot.set_bot_info_description(description)
+        if await bot.get_bot_info_description() != description:
+            await bot.set_bot_info_description(description)
 
     async def __set_about(self, bot: Client):
         if not self.me or not bot.me:
@@ -174,4 +177,5 @@ class UserMethods(Client):
 
         description = """This is bot controlled by "Fear" selfbot"""
 
-        await bot.set_bot_info_short_description(description)
+        if await bot.get_bot_info_short_description() != description:
+            await bot.set_bot_info_short_description(description)

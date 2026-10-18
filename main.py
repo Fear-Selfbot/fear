@@ -2,6 +2,7 @@ import asyncio
 import logging
 
 from kurigram_utils import install_event_loop
+from pyrogram import compose
 
 from config import config
 
@@ -10,7 +11,6 @@ from config import config
 # Install custom asyncio event loop
 install_event_loop()
 
-from pyrogram import compose
 
 from src.core.client import FearClient
 

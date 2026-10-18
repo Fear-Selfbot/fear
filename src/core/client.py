@@ -1,4 +1,11 @@
+import asyncio
+
+from fear_module import FearModule
 from pyrogram import Client
+from pyrogram.types import Message
+
+from config import config
+from src.core.module.loader import ModuleLoader
 
 from .types import FearBot, FearUser
 from .utils.settings import get_settings
@@ -20,12 +27,49 @@ class FearClient:
         self.phone_number = phone_number
         self.password = password
 
+        self.restart_message: Message | None = None
+        self.is_setup: bool = True
+
+        self._loaded_modules: list[FearModule] = []
         self._user: FearUser
         self._bot: FearBot
 
     @property
+    def modules(self) -> list[FearModule]:
+        return self._loaded_modules
+
+    @property
     def clients(self) -> list[Client]:
         return [self._user, self._bot]
+
+    @property
+    def user(self) -> FearUser:
+        return self._user
+
+    @property
+    def bot(self) -> FearBot:
+        return self._bot
+
+    def unload_modules(self):
+        for module in self._loaded_modules:
+            for handler in module.user_handlers:
+                self._user.remove_handler(handler)
+            for handler in module.bot_handlers:
+                self._bot.remove_handler(handler)
+        print(f"Unloaded {len(self._loaded_modules)} modules")
+        self._loaded_modules.clear()
+
+    def load_modules(self):
+        self.unload_modules()
+        self._loaded_modules = ModuleLoader(config.MODULES_DIR).load(self)
+
+        for module in self._loaded_modules:
+            for handler in module.user_handlers:
+                self._user.add_handler(handler)
+            for handler in module.bot_handlers:
+                self._bot.add_handler(handler)
+
+        print(f"Loaded {len(self._loaded_modules)} modules")
 
     def __create_user(self) -> None:
         self._user = FearUser(
@@ -35,7 +79,7 @@ class FearClient:
             self.api_hash,
             self.phone_number,
             self.password,
-            **get_settings("src/client/core/plugins/user"),
+            **get_settings("src/core/plugins/user"),
         )
 
     def __create_bot(self) -> None:
@@ -46,7 +90,7 @@ class FearClient:
             self,
             self.api_id,
             self.api_hash,
-            **get_settings("src/client/core/plugins/bot"),
+            **get_settings("src/core/plugins/bot"),
         )
 
     async def setup(self) -> None:
@@ -57,3 +101,19 @@ class FearClient:
 
             async with self._bot:
                 await self._user.setup_bot_settings(self._bot)
+        self.is_setup = False
+        self.load_modules()
+
+    async def restart_clients(self):
+        await asyncio.gather(
+            *(client.stop(block=True, clear_handlers=True) for client in self.clients)
+        )
+
+        self.load_modules()
+
+        await asyncio.gather(*(client.start() for client in self.clients))
+
+    def schedule_restart(self):
+        asyncio.get_running_loop().call_soon(
+            lambda: asyncio.create_task(self.restart_clients())
+        )
