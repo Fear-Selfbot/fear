@@ -1,8 +1,8 @@
 import asyncio
 import logging
 import re
-from dataclasses import dataclass
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from io import BytesIO
 from typing import TypeVar
 
@@ -145,7 +145,9 @@ class UserMethods(Client):
                             "BotFather returned an unrecognized response to /token"
                         )
                     if created_bot:
-                        raise RuntimeError("BotFather did not list the newly created bot")
+                        raise RuntimeError(
+                            "BotFather did not list the newly created bot"
+                        )
                     await self._create_bot()
                     created_bot = True
                     continue

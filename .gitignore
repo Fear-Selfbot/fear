@@ -12,5 +12,6 @@ wheels/
 .data
 .test
 
-/src/modules/*
-!/src/modules/system/
+/modules/*
+!/modules/system/
+!/modules/__init__.py

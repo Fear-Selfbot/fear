@@ -1,6 +1,6 @@
-from typing import Generator
 import asyncio
 import logging
+from collections.abc import Callable
 
 from fear_module import ClientType, FearModule
 from pyrogram import Client
@@ -36,6 +36,13 @@ class FearClient:
         self.is_setup: bool = True
 
         self._loaded_modules: list[FearModule] = []
+        self._reload_callbacks: list[
+            tuple[Callable[[], None] | None, Callable[[Exception], None] | None]
+        ] = []
+        self._queued_reload_callbacks: list[
+            tuple[Callable[[], None] | None, Callable[[Exception], None] | None]
+        ] = []
+        self._reload_task: asyncio.Task[None] | None = None
         self._user: FearUser
         self._bot: FearBot
 
@@ -92,7 +99,9 @@ class FearClient:
         previous = self._loaded_modules
         clients_connected = any(client.is_connected for client in self.clients)
         try:
-            loaded = ModuleLoader(config.MODULES_DIR).load(self)
+            loaded = ModuleLoader(
+                config.MODULES_DIR, config.DATA_DIR / "module-deps"
+            ).load(self)
         except Exception:
             # stop(clear_handlers=True) removes handlers before a restart reload.
             if previous and not clients_connected:
@@ -149,25 +158,68 @@ class FearClient:
         self.load_modules()
 
     async def restart_clients(self):
-        await asyncio.gather(
-            *(client.stop(block=True, clear_handlers=True) for client in self.clients)
-        )
-
         try:
+            await asyncio.gather(
+                *(client.stop(block=True, clear_handlers=True) for client in self.clients)
+            )
             self.load_modules()
-        except Exception:
+        except Exception as exc:
             log.exception("Module reload failed; restarting with the previous modules")
-            await asyncio.gather(*(client.start() for client in self.clients))
+            try:
+                await asyncio.gather(*(client.start() for client in self.clients))
+            except Exception:
+                log.exception("Could not restart Telegram clients after reload failure")
             if self.restart_message:
                 await self.restart_message.edit(
                     "Не удалось перезагрузить модули; восстановлен предыдущий набор."
                 )
                 self.restart_message = None
+            self._finish_reload_callbacks(exc)
+            self._schedule_followup_reload()
             return
 
         await asyncio.gather(*(client.start() for client in self.clients))
+        self._finish_reload_callbacks()
+        if self.restart_message:
+            await self.restart_message.edit("Модули перезагружены.")
+            self.restart_message = None
+        self._schedule_followup_reload()
 
-    def schedule_restart(self):
-        asyncio.get_running_loop().call_soon(
-            lambda: asyncio.create_task(self.restart_clients())
-        )
+    def _finish_reload_callbacks(self, error: Exception | None = None) -> None:
+        callbacks, self._reload_callbacks = self._reload_callbacks, []
+        for on_success, on_failure in callbacks:
+            if error is not None and on_failure is not None:
+                try:
+                    on_failure(error)
+                except Exception:
+                    log.exception("A module reload completion callback failed")
+            elif error is None and on_success is not None:
+                try:
+                    on_success()
+                except Exception:
+                    log.exception("A module reload completion callback failed")
+
+    def _start_scheduled_reload(self) -> None:
+        if self._reload_task is None or self._reload_task.done():
+            self._reload_task = asyncio.create_task(self.restart_clients())
+
+    def _schedule_followup_reload(self) -> None:
+        if self._queued_reload_callbacks:
+            self._reload_callbacks.extend(self._queued_reload_callbacks)
+            self._queued_reload_callbacks.clear()
+            asyncio.get_running_loop().call_soon(self._start_scheduled_reload)
+
+    def schedule_reload(
+        self,
+        on_success: Callable[[], None] | None = None,
+        on_failure: Callable[[Exception], None] | None = None,
+    ) -> None:
+        callbacks = self._queued_reload_callbacks if (
+            self._reload_task is not None and not self._reload_task.done()
+        ) else self._reload_callbacks
+        callbacks.append((on_success, on_failure))
+        asyncio.get_running_loop().call_soon(self._start_scheduled_reload)
+
+    def schedule_restart(self) -> None:
+        """Backward-compatible alias for the reload scheduler."""
+        self.schedule_reload()

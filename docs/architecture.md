@@ -10,9 +10,9 @@ Fear — запускаемый Python-клиент для личного Telegr
 
 ## Модули
 
-Загрузчик `src/core/module/loader.py` ищет `src/modules/*/main.py`, импортирует каждый найденный файл и создаёт определённые в нём подклассы `FearModule`. Метод `register()` вызывается при загрузке. Обработчики типа `USER` ставятся на user-клиент, `BOT` — на bot-клиент, `SECRETARY` — также на bot-клиент. Каталог модулей является границей исполнения кода: его содержимое запускается с правами процесса.
+Загрузчик `src/core/module/loader.py` ищет `modules/*/main.py`; старый путь `src/modules/*/main.py` поддержан для совместимости. Он импортирует entrypoint и создаёт определённые в нём подклассы `FearModule`. Метод `register()` вызывается при загрузке. Обработчики типа `USER` ставятся на user-клиент, `BOT` — на bot-клиент, `SECRETARY` — также на bot-клиент. Каталог модулей является границей исполнения кода: его содержимое запускается с правами процесса.
 
-Системный модуль в `src/modules/system/main.py` реализует `.help`, `/help` и `.reload`. Fear Module SDK описывает `Command`, `ClientType` и `FearModule`; подробности — в [интеграции модулей](modules.md).
+Системный модуль в `modules/system/main.py` реализует `.help`, `/help`, `.reload` и команды FUR `.flist`, `.fins`, `.frem`, `.fupd`. Менеджер FUR находится в `src/core/module/manager.py`; он передаёт активацию изменений в общий `schedule_reload()`-flow, как `.reload`. Fear Module SDK описывает `Command`, `ClientType` и `FearModule`; подробности — в [интеграции модулей](modules.md).
 
 ## Конфигурация и данные
 

@@ -71,7 +71,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     DATA_DIR: Path = Path(__file__).parent / ".data"
     SESSIONS_DIR: Path = DATA_DIR / "sessions"
-    MODULES_DIR: Path = Path(__file__).parent / "src" / "modules"
+    MODULES_DIR: Path = Path(__file__).parent / "modules"
 
     # Load PROXY_* only when Settings is created, not when this module is imported.
     proxy: PROXYSettings = Field(default_factory=PROXYSettings)

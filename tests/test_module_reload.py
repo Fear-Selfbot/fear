@@ -1,6 +1,7 @@
+import asyncio
 import unittest
 from typing import Any, cast
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from src.core.client import FearClient
 
@@ -95,6 +96,69 @@ class ModuleReloadTests(unittest.TestCase):
 
         self.assertEqual(client._user.handlers, {"old-user"})
         self.assertEqual(client._bot.handlers, {"old-bot"})
+
+
+class ScheduledReloadTests(unittest.IsolatedAsyncioTestCase):
+    async def test_scheduled_reload_coalesces_requests_and_calls_success_hooks(self):
+        client = cast(Any, FearClient.__new__(FearClient))
+        client._reload_callbacks = []
+        client._reload_task = None
+        completed = []
+        async def restart():
+            client._finish_reload_callbacks()
+
+        with patch.object(client, "restart_clients", new=AsyncMock(side_effect=restart)) as task:
+            client.schedule_reload(lambda: completed.append("first"))
+            client.schedule_reload(lambda: completed.append("second"))
+            await asyncio.sleep(0)
+            await cast(asyncio.Task[None], client._reload_task)
+
+        task.assert_awaited_once()
+        self.assertEqual(completed, ["first", "second"])
+
+    async def test_scheduled_reload_calls_failure_hook(self):
+        client = cast(Any, FearClient.__new__(FearClient))
+        client._reload_callbacks = []
+        client._reload_task = None
+        failures = []
+        error = RuntimeError("reload failed")
+
+        async def restart():
+            client._finish_reload_callbacks(error)
+
+        with patch.object(client, "restart_clients", new=AsyncMock(side_effect=restart)) as task:
+            client.schedule_reload(on_failure=failures.append)
+            await asyncio.sleep(0)
+            await cast(asyncio.Task[None], client._reload_task)
+
+        task.assert_awaited_once()
+        self.assertEqual(failures, [error])
+
+    async def test_reload_requested_mid_cycle_runs_after_current_reload(self):
+        client = cast(Any, FearClient.__new__(FearClient))
+        client._reload_callbacks = []
+        client._queued_reload_callbacks = []
+        client._reload_task = None
+        completed = []
+        call_count = 0
+
+        async def restart():
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                client.schedule_reload(lambda: completed.append("queued"))
+            client._finish_reload_callbacks()
+            client._schedule_followup_reload()
+
+        with patch.object(client, "restart_clients", new=AsyncMock(side_effect=restart)):
+            client.schedule_reload(lambda: completed.append("current"))
+            await asyncio.sleep(0)
+            await cast(asyncio.Task[None], client._reload_task)
+            await asyncio.sleep(0)
+            await cast(asyncio.Task[None], client._reload_task)
+
+        self.assertEqual(call_count, 2)
+        self.assertEqual(completed, ["current", "queued"])
 
 
 if __name__ == "__main__":

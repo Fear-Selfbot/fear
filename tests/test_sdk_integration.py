@@ -3,7 +3,7 @@ import unittest
 
 class SdkIntegrationTests(unittest.TestCase):
     def test_system_module_imports_with_locked_sdk_contract(self):
-        from src.modules.system.main import SystemModule
+        from modules.system.main import SystemModule
 
         self.assertEqual(SystemModule.name, "System")
 
