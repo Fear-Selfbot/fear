@@ -1,12 +1,23 @@
 import asyncio
+import logging
+import re
 from dataclasses import dataclass
-from typing import BinaryIO
+from collections.abc import Awaitable, Callable
+from io import BytesIO
+from typing import TypeVar
 
 from pyrogram import Client, types
 from pyrogram.errors import FloodWait
 from pyrogram.types import InputChatPhotoStatic, Message
 
 BOTFATHER = "BotFather"
+BOTFATHER_TIMEOUT = 30
+BOTFATHER_ATTEMPTS = 3
+FLOOD_WAIT_ATTEMPTS = 3
+TOKEN_PATTERN = re.compile(r"(?m)^\d+:[A-Za-z0-9_-]+$")
+NO_BOTS_PATTERN = re.compile(r"\bno bots?\b|don't have any bots", re.IGNORECASE)
+T = TypeVar("T")
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -33,7 +44,7 @@ class UserMethods(Client):
         text: str,
         wait_from: str | int | None = None,
         delete: bool = False,
-        timeout: int = 30,
+        timeout: float = 30.0,
     ) -> types.Message | None:
         if chat_id in self.message_pool:
             raise RuntimeError(f"Already waiting for a message in chat {chat_id}")
@@ -46,10 +57,10 @@ class UserMethods(Client):
         )
 
         self.message_pool[chat_id] = wait_message
-        message: Message | None
+        sent_message: Message | None = None
 
         try:
-            message = await self.send_message(chat_id, text)
+            sent_message = await self.send_message(chat_id, text)
             await asyncio.wait_for(
                 fut=wait_message.event.wait(),
                 timeout=timeout,
@@ -59,80 +70,150 @@ class UserMethods(Client):
         except TimeoutError:
             return None
         finally:
-            if message and delete:
-                await message.delete()
-            self.message_pool.pop(chat_id, None)
+            try:
+                if sent_message and delete:
+                    await sent_message.delete()
+            except Exception:
+                log.exception("Could not delete the outgoing message after waiting")
+            finally:
+                self.message_pool.pop(chat_id, None)
 
-    async def __create_bot(self):
-        clientName = f"FearClient ({self.name})"
-        msgs: set[Message | None] = set()
-        msg = await self.send_message_wait(BOTFATHER, "/newbot", delete=True)
-        msgs.add(msg)
-        msg = await self.send_message_wait(BOTFATHER, clientName, delete=True)
-        msgs.add(msg)
-        msg = await self.send_message_wait(BOTFATHER, self.botname, delete=True)
-        msgs.add(msg)
+    async def _create_bot(self) -> None:
+        client_name = f"FearClient ({self.name})"
+        replies: list[Message] = []
+        try:
+            for text in ("/newbot", client_name, self.botname):
+                reply = await self.send_message_wait(
+                    BOTFATHER,
+                    text,
+                    wait_from=BOTFATHER,
+                    delete=True,
+                    timeout=BOTFATHER_TIMEOUT,
+                )
+                if reply is None:
+                    raise TimeoutError(f"BotFather did not answer {text!r}")
+                replies.append(reply)
 
-        to_delete: set[int] = set()
-        for msg in msgs:
-            if msg:
-                to_delete.add(msg.id)
+            await self.start_bot(self.botname)
+        finally:
+            await self._delete_botfather_messages(replies)
 
-        await self.delete_messages(BOTFATHER, to_delete)
-        await self.start_bot(self.botname)
+    async def _delete_botfather_messages(self, messages: list[Message]) -> None:
+        message_ids = [message.id for message in messages if message.id]
+        if not message_ids:
+            return
+        try:
+            await self.delete_messages(BOTFATHER, message_ids)
+        except Exception:
+            # Cleanup must not hide the BotFather error or a successfully parsed token.
+            log.exception("Could not remove BotFather conversation messages")
 
-        # await self.setup_bot()
-
-    async def __get_token(self) -> str:
-        to_delete: set[int] = set()
-        startMessage = await self.send_message_wait(
-            BOTFATHER, "/start", BOTFATHER, delete=True
+    async def _send_message_waiting_for_botfather(self, text: str) -> Message | None:
+        return await self.send_message_wait(
+            BOTFATHER,
+            text,
+            wait_from=BOTFATHER,
+            delete=True,
+            timeout=BOTFATHER_TIMEOUT,
         )
-        tokenMessage = await self.send_message_wait(
-            BOTFATHER, "/token", BOTFATHER, delete=True
+
+    async def _parse_bot_token(self, message: Message) -> str:
+        content = message.content or ""
+        match = TOKEN_PATTERN.search(content)
+        if match is None:
+            raise ValueError("BotFather response did not contain a valid bot token")
+        return match.group(0)
+
+    async def _get_token(self) -> str:
+        created_bot = False
+        for attempt in range(BOTFATHER_ATTEMPTS):
+            replies: list[Message] = []
+            try:
+                start_reply = await self._send_message_waiting_for_botfather("/start")
+                if start_reply is None:
+                    raise TimeoutError("BotFather timed out while starting the chat")
+                replies.append(start_reply)
+
+                token_prompt = await self._send_message_waiting_for_botfather("/token")
+                if token_prompt is None:
+                    raise TimeoutError("BotFather timed out while listing bot tokens")
+                replies.append(token_prompt)
+
+                if not token_prompt.reply_markup:
+                    if not NO_BOTS_PATTERN.search(token_prompt.content or ""):
+                        raise RuntimeError(
+                            "BotFather returned an unrecognized response to /token"
+                        )
+                    if created_bot:
+                        raise RuntimeError("BotFather did not list the newly created bot")
+                    await self._create_bot()
+                    created_bot = True
+                    continue
+
+                selection = await self._send_message_waiting_for_botfather(self.botname)
+                if selection is None:
+                    raise TimeoutError("BotFather timed out while selecting the bot")
+                replies.append(selection)
+
+                if "invalid bot selected" in (selection.content or "").casefold():
+                    if created_bot:
+                        raise RuntimeError("BotFather rejected the newly created bot")
+                    await self._create_bot()
+                    created_bot = True
+                    continue
+
+                return await self._parse_bot_token(selection)
+            finally:
+                await self._delete_botfather_messages(replies)
+
+        raise RuntimeError(
+            f"Could not retrieve a bot token after {BOTFATHER_ATTEMPTS} attempts"
         )
-        to_delete.add(startMessage.id) if startMessage else to_delete.add(0)
-        to_delete.add(tokenMessage.id) if tokenMessage else to_delete.add(0)
-        if tokenMessage and tokenMessage.reply_markup:
-            selectMessage = await self.send_message_wait(
-                BOTFATHER, self.botname, BOTFATHER, delete=True
-            )
-            to_delete.add(selectMessage.id) if selectMessage else to_delete.add(0)
-            if selectMessage and selectMessage.content == "Invalid bot selected.":
-                await self.__create_bot()
-                await self.delete_messages(BOTFATHER, to_delete)
-                return await self.__get_token()
-            else:
-                if selectMessage:
-                    await self.delete_messages(BOTFATHER, to_delete)
-                    return selectMessage.content.split("\n")[1]
-                else:
-                    await self.delete_messages(BOTFATHER, to_delete)
-                    raise ValueError("Cant get selectMessage")
-        else:
-            await self.__create_bot()
-            await self.delete_messages(BOTFATHER, to_delete)
-            return await self.__get_token()
 
     async def get_bot_token(self) -> str:
 
         if self.is_connected:
-            return await self.__get_token()
+            return await self._get_token()
         else:
             async with self:
-                return await self.__get_token()
+                return await self._get_token()
+
+    async def _with_flood_wait_retry(
+        self, operation: Callable[[], Awaitable[T]], label: str
+    ) -> T:
+        for attempt in range(FLOOD_WAIT_ATTEMPTS):
+            try:
+                return await operation()
+            except FloodWait as error:
+                if attempt + 1 == FLOOD_WAIT_ATTEMPTS:
+                    raise
+                value = error.value
+                if isinstance(value, int):
+                    delay = value
+                elif isinstance(value, str):
+                    try:
+                        delay = int(value)
+                    except ValueError:
+                        delay = 1
+                else:
+                    delay = 1
+                delay = max(1, delay)
+                log.warning("FloodWait during %s; retrying in %s seconds", label, delay)
+                await asyncio.sleep(delay)
+        raise RuntimeError(f"{label} did not complete")
 
     async def setup_bot_settings(self, bot: Client):
         if not self.is_connected or not bot.is_connected:
             return
 
-        try:
-            await self.__set_bot_photo(bot)
-            await self.__set_name(bot)
-            await self.__set_description(bot)
-            await self.__set_about(bot)
-        except FloodWait:
-            pass
+        operations = (
+            ("profile photo", self.__set_bot_photo),
+            ("bot name", self.__set_name),
+            ("bot description", self.__set_description),
+            ("bot short description", self.__set_about),
+        )
+        for label, operation in operations:
+            await self._with_flood_wait_retry(lambda: operation(bot), label)
 
     async def __set_bot_photo(self, bot: Client):
         if not self.me or not bot.me:
@@ -142,7 +223,8 @@ class UserMethods(Client):
             return
 
         my_photo = await self.download_media(self.me.photo, in_memory=True)
-        if isinstance(my_photo, BinaryIO):
+        if isinstance(my_photo, BytesIO):
+            my_photo.seek(0)
             await bot.set_profile_photo(InputChatPhotoStatic(my_photo))
 
     async def __set_name(self, bot: Client):

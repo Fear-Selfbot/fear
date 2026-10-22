@@ -1,26 +1,32 @@
-from typing import cast
+from typing import Protocol, cast
 
 from fear_module import (
     ClientType,
     Command,
     FearBot,
-    FearClient,
     FearModule,
     FearUser,
 )
+from fear_module.protocols import FearClientProtocol, FearUserProtocol
 from pyrogram import Client, filters, types
 from pyrogram.handlers import MessageHandler
-from pyrogram.types import Message
+from pyrogram.types import Message, User
 
 helpUserCommand = Command("help", ".", "Returns all commands", ClientType.USER)
 helpBotCommand = Command("help", "/", "Returns all commands", ClientType.BOT)
 reloadCommand = Command("reload", ".", "Reload all modules", ClientType.USER)
 
 
-class FearClientExtended(FearClient):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.restart_message: Message | None = None
+class FearUserExtended(FearUserProtocol, Protocol):
+    @property
+    def me(self) -> User | None: ...
+
+
+class FearClientExtended(FearClientProtocol, Protocol):
+    @property
+    def user(self) -> FearUserExtended: ...
+
+    restart_message: Message | None
 
 
 class SystemModule(FearModule):
@@ -40,11 +46,12 @@ class SystemModule(FearModule):
         helpUserCommand.add_handler(
             MessageHandler(help_handler, helpUserCommand.filter & filters.me)
         )
-        if self.client.user.me:
+        user = self.client.user.me
+        if user:
             helpBotCommand.add_handler(
                 MessageHandler(
                     help_handler_bot,
-                    helpBotCommand.filter & filters.chat(self.client.user.me.id),
+                    helpBotCommand.filter & filters.chat(user.id),
                 )
             )
 

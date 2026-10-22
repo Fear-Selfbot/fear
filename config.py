@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -19,8 +19,9 @@ class PROXYSettings(BaseSettings):
 
     HOST: str = "localhost"
     PORT: int = 8080
-    USER: str = "user"
-    PASSWORD: str = "password"
+    USER: str | None = None
+    PASSWORD: str | None = None
+    TYPE: Literal["http", "socks5"] = "http"
 
     @property
     def http(self) -> HTTPProxy:
@@ -67,11 +68,9 @@ class Settings(BaseSettings):
     PASSWORD: str
     PHONE: str
     NAME: str
-    SUPERADMIN_IDS: list[int] = Field(default_factory=list)
-
+    LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     DATA_DIR: Path = Path(__file__).parent / ".data"
     SESSIONS_DIR: Path = DATA_DIR / "sessions"
-    HANDLERS_DIR: Path = Path(__file__).parent / "src" / "client" / "handlers"
     MODULES_DIR: Path = Path(__file__).parent / "src" / "modules"
 
     # Load PROXY_* only when Settings is created, not when this module is imported.

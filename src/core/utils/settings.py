@@ -5,9 +5,16 @@ from config import config
 
 def get_settings(plugins_path: str | None = None):
     plugins = dict(root=plugins_path) if plugins_path else None
+    proxy = None
+    if config.proxy.HOST != "localhost":
+        proxy = (
+            config.proxy.socks5
+            if config.proxy.TYPE == "socks5"
+            else config.proxy.http
+        )
     return {
         "plugins": plugins,
-        "proxy": config.proxy.http if config.proxy.HOST != "localhost" else None,
+        "proxy": proxy,
         "client_platform": ClientPlatform.DESKTOP,
         "device_model": "Desktop",
         "system_version": "Windows 11 x64",

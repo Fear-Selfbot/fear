@@ -16,10 +16,10 @@ Fear — запускаемый Python-клиент для личного Telegr
 
 ## Конфигурация и данные
 
-Обязательные переменные `.env`: `API_ID`, `API_HASH`, `PASSWORD`, `PHONE`, `NAME`. Необязательные параметры прокси: `PROXY_HOST`, `PROXY_PORT`, `PROXY_USER`, `PROXY_PASSWORD`. Сессии сохраняются в `.data/sessions` (путь вычисляется относительно `config.py`); каталог `.data` исключён из Git.
+Обязательные переменные `.env`: `API_ID`, `API_HASH`, `PASSWORD`, `PHONE`, `NAME`. Уровень логирования задаётся `LOG_LEVEL` (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`), по умолчанию `INFO`. Необязательные параметры прокси: `PROXY_TYPE` (`http` или `socks5`), `PROXY_HOST`, `PROXY_PORT`, `PROXY_USER`, `PROXY_PASSWORD`. Прокси выключен, когда host равен `localhost`; логин и пароль опциональны. Сессии сохраняются в `.data/sessions` (путь вычисляется относительно `config.py`); каталог `.data` исключён из Git.
 
-`SUPERADMIN_IDS` и `HANDLERS_DIR` объявлены в настройках, но по текущему коду не используются. Настройка прокси передаётся клиенту только если `PROXY_HOST` отличается от `localhost`.
+Параметры конфигурации отражены в `.env.example`; неиспользуемые опции не объявляются как действующие настройки.
 
 ## Разработка и ограничения
 
-Проверки: `python -m compileall -q main.py config.py src` и `uv lock --check`. Сейчас в репозитории нет тестового набора, CI-конфигурации или настроенного линтера. Сетевой запуск обращается к реальному Telegram и может создавать бота через BotFather.
+Проверки: `python -m compileall -q main.py config.py src tests`, `uv lock --check`, `uv run --locked python -m unittest discover -s tests -v` и `ty check`. CI-конфигурации пока нет. Сетевой запуск обращается к реальному Telegram и может создавать бота через BotFather. Fear настраивает root logging; логи SDK наследуют эту конфигурацию.

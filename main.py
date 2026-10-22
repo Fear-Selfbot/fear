@@ -18,6 +18,7 @@ log = logging.getLogger(__name__)
 
 
 async def main():
+    log.info("Preparing Fear clients")
     client = FearClient(
         name=config.NAME,
         api_id=config.API_ID,
@@ -26,15 +27,26 @@ async def main():
         password=config.PASSWORD,
     )
 
-    await client.setup()
+    try:
+        await client.setup()
+    except Exception:
+        log.exception("Fear client setup failed")
+        raise
 
-    await compose(client.clients)
+    log.info("Starting Telegram clients")
+    try:
+        await compose(client.clients)
+    except Exception:
+        log.exception("Telegram clients stopped with an error")
+        raise
+    finally:
+        log.info("Fear has stopped")
 
 
 if __name__ == "__main__":
     logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s | %(levelname)-8s | %(message)s",
+        level=getattr(logging, config.LOG_LEVEL),
+        format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
